@@ -1,0 +1,9 @@
+Automatically download subtitles in VLC player
+
+You can write VideoLAN VLC player's extensions in LUA programming language. Extensions are in Videolan\VLC directory lua\extensions. 
+
+This is a modified extension to automatically download subtitles. 
+
+
+Will add more languages upon request.
+Currently this extension is intended for personal use.
