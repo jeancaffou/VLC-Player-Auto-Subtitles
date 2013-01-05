@@ -151,7 +151,7 @@ function click_search()
 
 	local ws = websites[idx]
 	local lang = languages[idx2]
-	local url = ws.urlfunc(search_term)
+	local url = ws.urlfunc(search_term,lang.tag)
 
 	-- vlc.msg.info("Url: '" .. url .. "'")
 	local stream = vlc.stream(url)
@@ -391,11 +391,11 @@ function collect(s)
 	return stack[1]
 end
 
-function urlOpenSub(search_term)
+function urlOpenSub(search_term,lang)
 	-- base = "http://api.opensubtitles.org/en/search/"
 	search_term = string.gsub(search_term, "%%", "%%37")
 	search_term = string.gsub(search_term, " ", "%%20")
-	return "http://kafol.net/code/subtitles/search.php?s=" .. search_term
+	return "http://kafol.net/code/subtitles/search.php?s=" .. search_term .. "&l=" .. lang
 	-- return base .. "moviename-" .. search_term .. "/simplexml"
 	-- http://api.opensubtitles.org/en/search/moviename- .. search_term .. /simplexml
 end
@@ -509,7 +509,8 @@ websites = {
 }
 
 languages = {
-	{ title = "English", tag = "en" }
+	{ title = "English", tag = "en" },
 	-- { title = "All", tag = "all" },
-	-- { title = "Slovenian", tag = "sl" }
+	{ title = "Slovenian", tag = "sl" },
+	{ title = "French", tag = "fr" }
 }
