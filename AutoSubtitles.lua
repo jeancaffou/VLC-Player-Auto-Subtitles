@@ -27,6 +27,7 @@ end
 
 -- Get clean title from filename
 function get_title(str)
+	vlc.msg.dbg("get title "..(str or ""))
     local item = vlc.item or vlc.input.item()
     if not item then
         return ""
@@ -48,12 +49,14 @@ end
 
 -- Function triggered when the extension is activated
 function activate()
+	vlc.msg.dbg("activate")
 	new_dialog("Download subtitles")
 	return show_dialog_download()
 end
 
 -- Function triggered when the extension is deactivated
 function deactivate()
+	vlc.msg.dbg("deactivate")
 	if dialog_is_opened then
 		close()
 	else
@@ -85,11 +88,14 @@ end
 function input_changed()
 	vlc.msg.dbg("Input is changed")
 	update_title()
-	click_search()
+	search_button:set_text("Wait...")
+	dlg:update()
+	--click_search()
 end
 
 -- Update title in search dialog
 function update_title()
+	vlc.msg.dbg("update title")
 	if dialog_is_hidden or not update_title_needed then return true end
 	main_text_input:set_text(get_title())
 	dlg:update()
@@ -97,6 +103,7 @@ function update_title()
 end
 
 function show_dialog_download()
+	vlc.msg.dbg("show dialog download")
 	-- column, row, colspan, rowspan
 	dlg:add_label("<right><b>Database: </b></right>", 1, 1, 1, 1)
 	website = dlg:add_dropdown(2, 1, 3, 1)
@@ -124,17 +131,21 @@ function show_dialog_download()
 end
 
 function new_dialog(title)
+	vlc.msg.dbg("new dialog")
 	if(dlg == nil) then
 		dlg = vlc.dialog(title)
 	end
 end
 
 function hide_dialog()
+	vlc.msg.dbg("hide dialog")
 	dialog_is_hidden = true
 	dlg:hide()
 end
 
 function click_search()
+	vlc.msg.dbg("click search")
+	
 	local search_term = main_text_input:get_text()
 	if(search_term == "") then return false end
 
@@ -171,7 +182,12 @@ function click_search()
 
 	if subtitles_list == nil then
 		subtitles_list = dlg:add_list(1, 4, 4, 1)
-		load_button = dlg:add_button("Load selected subtitles", click_load_from_search_button, 1, 5, 4, 1)
+		if load_button == nil then
+			load_button = dlg:add_button("Load selected subtitles", click_load_from_search_button, 1, 5, 4, 1)
+		end
+		if save_checkbox == nil then
+			save_checkbox = dlg:add_check_box("Save", false, 4, 6, 1, 1)
+		end
 	end
 
 	if not subtitles_result then
@@ -198,11 +214,13 @@ function click_search()
 end
 
 function load_unknown_subtitles(url, language)
-	vlc.msg.dbg("Loading "..language.." subtitle: "..url)
+	vlc.msg.dbg("Loading unknown "..language.." subtitle: "..url)
 	vlc.input.add_subtitle(url)
 end
 
 function load_subtitles_in_the_archive(dataBuffer, language)
+	vlc.msg.dbg("load_subtitles_in_the_archive")
+	
 	local buffer_length = dataBuffer:len()
 	local files_found_in_the_compressed_file = 0
 	local subtitles_found_in_the_compressed_file = 0
@@ -222,6 +240,10 @@ function load_subtitles_in_the_archive(dataBuffer, language)
 			subtitles_found_in_the_compressed_file = subtitles_found_in_the_compressed_file + 1
 			vlc.msg.dbg("Loading "..language.." subtitle: "..srturl)
 			vlc.input.add_subtitle(srturl.."."..extension)
+			
+			if save_checkbox ~= nil and save_checkbox:get_checked() then
+				save_subtitle(srturl, extension, language)
+			end
 		end
 	end
 	vlc.msg.info("Files found in the compressed file: "..files_found_in_the_compressed_file)
@@ -233,7 +255,47 @@ function load_subtitles_in_the_archive(dataBuffer, language)
 	return false
 end
 
+function save_subtitle(url, extension, language)
+	local stream = vlc.stream(url.."."..extension)
+	
+	if stream == nil then
+		vlc.msg.err("The site of subtitles isn't reachable")
+		return false
+	end
+
+	local data = stream:read(2048)
+	if(data == nil) then
+		vlc.msg.info("Subtitle is NIL: "..url.."."..extension)
+	else
+		vlc.msg.info("Buffering: "..url.."."..extension)
+		local dataBuffer = ""
+		while(data ~= nil and data ~= "") do
+			dataBuffer = dataBuffer..data
+			data = stream:read(8192)
+		end
+
+		local item = vlc.input.item()
+		if(item ~= nil) then
+			local name = item:uri()
+			-- vlc.msg.info("NAME: "..name)
+			name = vlc.strings.decode_uri(string.gsub(name, "file:///", ""))
+
+			local winDir = os.getenv("windir")
+			if (winDir == "") or (winDir == nil) then
+			name = "/"..name
+			end
+
+			vlc.msg.info("[Subtitle-download] saving subtitle to: "..name.."."..language.."."..extension)
+			local fsout = assert(io.open(name.."."..language.."."..extension, "w"))
+			fsout:write(dataBuffer)
+			assert(fsout:close())
+		end
+	end
+end
+
 function parse_archive(url, language)
+	vlc.msg.dbg("parse_archive "..url)
+
 	if url == "-1" then vlc.msg.dbg("Dummy result") return true end
 
 	local stream = vlc.stream(url)
@@ -351,12 +413,14 @@ function parseargs(s)
 end
 
 function collect(s)
+	vlc.msg.dbg("collect "..s)
 	local stack = {}
 	local top = {}
 	table.insert(stack, top)
 	local ni,c,label,xarg, empty
 	local i, j = 1, 1
 	while true do
+		vlc.msg.dbg("collect while true")
 		ni,j,c,label,xarg, empty = string.find(s, "<(%/?)([%w:]+)(.-)(%/?)>", i)
 		if not ni then break end
 		local text = string.sub(s, i, ni-1)
