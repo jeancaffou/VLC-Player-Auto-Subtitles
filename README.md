@@ -6,7 +6,7 @@ This is a modified extension to automatically download subtitles.
 
 
 IMPORTANT:
-*Only works up to version 2.0.8.*
+**Only works up to version 2.0.8.**
 Due to undocumented changes in VLC 2.1.x, the subtitle loading function is broken (forced relative path).
 http://www.videolan.org/vlc/releases/2.0.8.html
 
